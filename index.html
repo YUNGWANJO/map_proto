@@ -342,6 +342,35 @@ html, body {
 }
 .depart-input-placeholder {
   font-size: 17px; color: #C4C4CC; line-height: 1.4;
+  position: relative;
+}
+.depart-input-placeholder.cursor-right::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 2px;
+  width: 2px;
+  height: 1.2em;
+  background: #143074;
+  animation: blink 1s infinite;
+}
+.depart-input-placeholder.cursor-left::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 2px;
+  width: 2px;
+  height: 1.2em;
+  background: #143074;
+  animation: blink 1s infinite;
+}
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
 }
 .depart-search-input-row.active .depart-input-placeholder {
   color: #C4C4CC;
@@ -1194,7 +1223,7 @@ html, body {
                   <path d="M9.99951 5.41675C12.5307 5.41675 14.5833 7.4686 14.5835 9.99976C14.5835 12.5311 12.5308 14.5837 9.99951 14.5837C7.46836 14.5836 5.4165 12.531 5.4165 9.99976C5.41668 7.46871 7.46846 5.41692 9.99951 5.41675ZM9.99951 7.70874C8.73412 7.70892 7.70867 8.73436 7.7085 9.99976C7.7085 11.2653 8.73401 12.2916 9.99951 12.2917C11.2652 12.2917 12.2915 11.2654 12.2915 9.99976C12.2913 8.73425 11.2651 7.70874 9.99951 7.70874Z" fill="#143074"/>
                 </svg>
               </span>
-              <span class="depart-input-placeholder">출발지 검색</span>
+              <span class="depart-input-placeholder" id="depSearchPlaceholder">출발지 검색</span>
             </div>
             <div class="depart-search-line"></div>
             <div class="depart-search-input-row">
@@ -1203,7 +1232,7 @@ html, body {
                   <path d="M9.99951 5.41675C12.5307 5.41675 14.5833 7.4686 14.5835 9.99976C14.5835 12.5311 12.5308 14.5837 9.99951 14.5837C7.46836 14.5836 5.4165 12.531 5.4165 9.99976C5.41668 7.46871 7.46846 5.41692 9.99951 5.41675ZM9.99951 7.70874C8.73412 7.70892 7.70867 8.73436 7.7085 9.99976C7.7085 11.2653 8.73401 12.2916 9.99951 12.2917C11.2652 12.2917 12.2915 11.2654 12.2915 9.99976C12.2913 8.73425 11.2651 7.70874 9.99951 7.70874Z" fill="#14BD47"/>
                 </svg>
               </span>
-              <span class="depart-input-placeholder">도착지 검색</span>
+              <span class="depart-input-placeholder" id="destSearchPlaceholder">도착지 검색</span>
             </div>
           </div>
           <button class="depart-swap-btn" type="button">
@@ -2095,22 +2124,61 @@ html, body {
   let isDepartureFirstFlow = false;
   let isDestinationSearchFlow = false;
 
+  // Helper: reset search input cursors and text
+  function resetSearchInputs() {
+    const dep = document.getElementById('depSearchPlaceholder');
+    const dest = document.getElementById('destSearchPlaceholder');
+    dep.classList.remove('cursor-right', 'cursor-left');
+    dest.classList.remove('cursor-right', 'cursor-left');
+    dep.textContent = '출발지 검색';
+    dep.style.color = '';
+    dest.textContent = '도착지 검색';
+    dest.style.color = '';
+  }
+
+  // Helper: get current departure address (without "출발지: " prefix)
+  function getCurrentDepartureAddr() {
+    const txt = departureText.textContent.replace('출발지: ', '').trim();
+    if (!txt || txt === '출발지를 선택하세요' || txt === '출발지') return null;
+    return txt;
+  }
+
   // Tap "출발지 검색" - Enter search overlay (departure flow)
   document.getElementById('departureSearchRow').addEventListener('click', () => {
     isDepartureFirstFlow = false;
     isDestinationSearchFlow = false;
     departureSearchContent.classList.add('active');
+
+    resetSearchInputs();
+    const dep = document.getElementById('depSearchPlaceholder');
+    const depAddr = getCurrentDepartureAddr();
+    if (depAddr) {
+      dep.textContent = depAddr;
+      dep.style.color = '#121212';
+    }
+    dep.classList.add('cursor-right');
   });
 
   // Tap "도착지 검색" - Enter search overlay (destination flow)
   document.getElementById('destSearchRow').addEventListener('click', () => {
     isDestinationSearchFlow = true;
     departureSearchContent.classList.add('active');
+
+    resetSearchInputs();
+    const dep = document.getElementById('depSearchPlaceholder');
+    const dest = document.getElementById('destSearchPlaceholder');
+    const depAddr = getCurrentDepartureAddr();
+    if (depAddr) {
+      dep.textContent = depAddr;
+      dep.style.color = '#121212';
+    }
+    dest.classList.add('cursor-left');
   });
 
   // Tap "지도에서 선택" button in search overlay
   document.getElementById('mapSelectBtn').addEventListener('click', () => {
     departureSearchContent.classList.remove('active');
+    resetSearchInputs();
     if (isDestinationSearchFlow) {
       isDestinationSearchFlow = false;
       enterDestMode();
@@ -2124,6 +2192,7 @@ html, body {
   document.getElementById('departureSearchBackBtn').addEventListener('click', () => {
     departureSearchContent.classList.remove('active');
     isDestinationSearchFlow = false;
+    resetSearchInputs();
   });
 
   // Tap "도착지 확인"
